@@ -62,7 +62,7 @@ public sealed class DDGIEditor : VolumeComponentEditor
     {
         if (!SystemInfo.supportsRayTracing)
         {
-            EditorGUILayout.HelpBox("DDGI依赖硬件光线跟踪，只在DX12、Playstation 5以及Xbox Series X上受支持", MessageType.Warning);
+            EditorGUILayout.HelpBox("DDGI relies on hardware ray tracing and is only supported on DX12, Playstation 5, and Xbox Series X.", MessageType.Warning);
             return;
         }
         
@@ -101,7 +101,7 @@ public sealed class DDGIEditor : VolumeComponentEditor
         if (mEnableProbeVariability.value.boolValue)
         {
             PropertyField(mProbeVariabilityThreshold);
-            EditorGUILayout.HelpBox("Probe Variability当前属于实验性功能，且不支持自发光物体，请酌情考虑使用", MessageType.Info);
+            EditorGUILayout.HelpBox("Probe Variability is currently an experimental feature and does not support emissive objects. Please consider using it with caution.", MessageType.Info);
         }
         EditorGUILayout.Space(5.0f);
 
@@ -138,8 +138,8 @@ public sealed class DDGIEditor : VolumeComponentEditor
             var customBounds = FindFirstObjectByType<DDGICustomBounds>();
             if (customBounds == null)
             {
-                EditorGUILayout.HelpBox("在当前场景中未检测到有效的DDGI Custom Bounds，您可能从未创建过它，或者将其设置为了禁用状态；" +
-                                        "要创建它，你可以在Hierarchy中右击->Light->DDGI Custom Bounds", 
+                EditorGUILayout.HelpBox("No valid DDGI Custom Bounds detected in the current scene. You may have never created it or have it disabled; " +
+                                        "To create it, you can right-click in the Hierarchy -> Light -> DDGI Custom Bounds",
                     MessageType.Warning);
             }
         }

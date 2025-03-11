@@ -11,8 +11,8 @@ float _CameraFarDistance;
 [shader("raygeneration")]
 void SimpleColorRayGen()
 {
-    uint2 dispatchIdx = DispatchRaysIndex().xy;      //像素坐标
-    uint2 dispatchDim = DispatchRaysDimensions().xy; //屏幕长宽
+    uint2 dispatchIdx = DispatchRaysIndex().xy;      // Pixel coordinates
+    uint2 dispatchDim = DispatchRaysDimensions().xy; // Screen width and height
     
     _OutputTarget[dispatchIdx] = 0.0f; // Clear
     
@@ -22,8 +22,8 @@ void SimpleColorRayGen()
     RayDesc rayDescriptor;
     rayDescriptor.Origin    = origin;
     rayDescriptor.Direction = direction;
-    rayDescriptor.TMin      = 1e-5f;              //射线最小距离
-    rayDescriptor.TMax      = _CameraFarDistance; //射线最远距离，摄像机远裁面
+    rayDescriptor.TMin      = 1e-5f;              // Minimum ray distance
+    rayDescriptor.TMax      = _CameraFarDistance; // Maximum ray distance, camera far clipping plane
     
     RayPayload rayIntersection;
     rayIntersection.remainingDepth  = 1;

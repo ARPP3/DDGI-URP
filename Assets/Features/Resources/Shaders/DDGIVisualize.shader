@@ -58,8 +58,10 @@ Shader "Custom/DDGIVisualize"
                 worldPos += probePosition;
 
                 vout.positionCS = TransformWorldToHClip(worldPos);
-                // 不要使用TransformObjectToWorldNormal，不知为什么在使用它的时候会造成奇怪的法线变换（有时会让法线反向）
+                // Do not use TransformObjectToWorldNormal, as for some reason,
+                // it causes strange normal transformations (sometimes flipping the normals).
                 vout.normalWS = mul(vin.normalOS, (float3x3)_ddgiSphere_ObjectToWorld);
+
                 vout.probeIndex = probeIndex;
 
                 return vout;

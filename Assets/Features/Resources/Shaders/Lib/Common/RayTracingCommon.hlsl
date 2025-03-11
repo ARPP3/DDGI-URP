@@ -10,19 +10,19 @@
 
 RaytracingAccelerationStructure _AccelerationStructure;
 
-// 相交几何属性
+// Intersection geometry attributes
 struct IntersectionVertex
 {
-    float3 positionOS;
-    float3 normalOS;
-    float4 tangentOS;
-    float2 uv;
+    float3 positionOS;   // Object space position
+    float3 normalOS;     // Object space normal
+    float4 tangentOS;    // Object space tangent
+    float2 uv;           // Texture coordinates
 };
 
-// 重心坐标插值
+// Barycentric coordinate interpolation
 struct AttributeData
 {
-    float2 barycentrics;
+    float2 barycentrics; // Barycentric coordinates
 };
 
 inline void GenerateCameraRay(out float3 origin, out float3 direction)
@@ -70,8 +70,9 @@ void GetCurrentIntersectionVertex(AttributeData attributeData, out IntersectionV
     outVertex.uv            = uv;
 }
 
-// 追踪阴影光线的方法（只是留档，目前不支持在Unity中使用，因为Closest Hit Shader中不允许使用RayTraceInline）
-// 相关讨论：https://forum.unity.com/threads/raytracing-rayquery-and-traceinline.961075/
+// Method for tracing shadow rays (for documentation purposes only, currently not supported in Unity 
+// as RayTraceInline is not allowed in the Closest Hit Shader)
+// Relevant discussion: https://forum.unity.com/threads/raytracing-rayquery-and-traceinline.961075/
 bool TraceShadowRay(RayDesc rayDesc)
 {
     RayQuery<RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> q;

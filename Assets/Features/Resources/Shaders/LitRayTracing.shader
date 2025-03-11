@@ -93,7 +93,7 @@ Shader "Custom/LitRayTracing"
             
             HLSLPROGRAM
 
-            #pragma raytracing test // test和任何内容无关，加此行只是为了通过编译
+            #pragma raytracing test // "test" is unrelated to any functionality; this line is added solely to pass compilation.
 
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS
@@ -129,7 +129,7 @@ Shader "Custom/LitRayTracing"
             
             HLSLPROGRAM
 
-            #pragma raytracing test // test和任何内容无关，加此行只是为了通过编译
+            #pragma raytracing test // "test" is unrelated to any functionality; this line is added solely to pass compilation.
 
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS

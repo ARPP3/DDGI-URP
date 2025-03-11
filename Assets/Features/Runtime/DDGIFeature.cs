@@ -150,16 +150,16 @@ public sealed class DDGIFeature : ScriptableRendererFeature
         
         private ComputeBuffer mDirectionalLightBuffer;
         private ComputeBuffer mPunctualLightBuffer;
-        
-        // 用于在Build Light Structured Buffer过程中收集定向光数据
+
+        // Used to collect directional light data during the Build Light Structured Buffer process
         private struct DirectionalLight
         {
             public Vector4 direction;
             public Vector4 color;
         }
 
-        // 用于在Build Light Structured Buffer过程中收集精确光数据
-        // Reference: RealtimeLights.hlsl 153 | 注：我们认定点光源、聚光灯和面光源是精确光，定向光不在此列
+        // Used to collect punctual light data (point lights, spotlights, area lights) during the Build Light Structured Buffer process
+        // Reference: RealtimeLights.hlsl 153 | Note: We consider point lights, spotlights, and area lights as punctual lights, while directional lights are not included here
         private struct PunctualLight
         {
             public Vector4 position;
@@ -167,9 +167,9 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             public Vector4 distanceAndSpotAttenuation;
             public Vector4 spotDirection;
         }
-        
-        // 用于在Build Light Structured Buffer过程中确定天光模式
-        // Raytrace shader不支持multi_compile，我们使用int define的方式确定天光模式
+
+        // Used to determine the sky light mode during the Build Light Structured Buffer process
+        // Raytrace shader does not support multi_compile, so we use an int define to determine the sky light mode
         private enum SkyLightMode
         {
             DDGI_SKYLIGHT_MODE_SKYBOX_CUBEMAP = 0,
@@ -178,7 +178,7 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             DDGI_SKYLIGHT_MODE_UNSUPPORTED = 3
         }
 
-        // 针对URP默认Skybox的参数Id，用于Build Light Structured Buffer过程以及Probe Variability灯光比对过程
+        // For URP's default Skybox parameter IDs, used during the Build Light Structured Buffer process and Probe Variability light comparison
         private static class SkyboxParam
         {
             public static readonly int _Tint = Shader.PropertyToID("_Tint");
@@ -187,7 +187,7 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             public static readonly int _Tex = Shader.PropertyToID("_Tex");
         }
 
-        // 只用于确定最新一帧中Sky Light设置是否发生改变，与Build Light Structured Buffer过程无关，仅用于Probe Variability
+        // Used only to determine if the Sky Light settings have changed in the latest frame, unrelated to the Build Light Structured Buffer process, only used for Probe Variability
         private class SkyLight
         {
             public SkyLight(Material skybox, AmbientMode ambientMode, float ambientIntensity,
@@ -238,7 +238,7 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             private Color groundColor;
         }
 
-        // 光照数据缓存，用于Probe Variability阶段
+        // Lighting data cache, used for the Probe Variability phase
         private List<DirectionalLight> mCachedDirectionalLights = new List<DirectionalLight>();
         private List<PunctualLight> mCachedPunctualLights = new List<PunctualLight>();
         private SkyLight mCachedSkyLight = new SkyLight(null, AmbientMode.Flat, 0.0f, Color.black, Color.black, Color.black);
@@ -312,20 +312,20 @@ public sealed class DDGIFeature : ScriptableRendererFeature
 
             mDDGIVolumeGpuCB = new ConstantBuffer<DDGIVolumeGpu>();
 
-            // Shader.Find不稳健，Shader在打包后可能出现丢失的情况，此时用Find是无效的
-            // 出于演示目的在此摆烂
+            // Shader.Find is not reliable, as shaders may be missing after packaging, making Find ineffective
+            // For demonstration purposes, using a quick workaround here
             mCubemapSkyPS = Shader.Find("Skybox/Cubemap");
         }
-        
+
         private void Initialize()
         {
             if (mIsInitialized || mddgiOverride == null) return;
-            
+
             // ---------------------------------------
             // Initialize cpu-side volume parameters
             // ---------------------------------------
             var sceneBoundingBox = GenerateSceneMeshBounds();
-            if (sceneBoundingBox.extents == Vector3.zero) return;   // 包围盒零值表示场景没有任何几何体，没有GI意义
+            if (sceneBoundingBox.extents == Vector3.zero) return;   // The zero bounding box means the scene has no geometry, no GI significance
             mDDGIVolumeCpu.Origin = sceneBoundingBox.center;
             mDDGIVolumeCpu.Extents = 1.1f * sceneBoundingBox.extents;
             mDDGIVolumeCpu.NumProbes = new Vector3Int(mddgiOverride.probeCountX.value, mddgiOverride.probeCountY.value, mddgiOverride.probeCountZ.value);
@@ -335,17 +335,17 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             // ---------------------------------------
             // Initialize Ray Data Buffer
             // ---------------------------------------
-            if(mRayBuffer != null) { mRayBuffer.Release(); mRayBuffer = null; }
+            if (mRayBuffer != null) { mRayBuffer.Release(); mRayBuffer = null; }
             int numProbesFlat = mDDGIVolumeCpu.NumProbes.x * mDDGIVolumeCpu.NumProbes.y * mDDGIVolumeCpu.NumProbes.z;
             mRayBuffer = new ComputeBuffer(numProbesFlat * mDDGIVolumeCpu.MaxNumRays, 16 /* float4 */, ComputeBufferType.Default);
-            
-            // 注：尽量使用GraphicsFormat来提供明确的浮点数 / 定点数指认
-            // 比如Distance Texture，先前使用RenderTextureFormat.RG32，该格式使用的是16-bit无符号定点数，但距离需要是浮点数
-            // 申请RG32作为Distance Texture会忽略距离信息的小数位，会导致切比雪夫可见性测试发生Edge Clamp Artifacts.
+
+            // Note: Try to use GraphicsFormat to provide explicit identification of floating-point / fixed-point numbers
+            // For example, Distance Texture, previously used RenderTextureFormat.RG32, which uses 16-bit unsigned fixed-point numbers, but distances need to be floating-point
+            // Allocating RG32 as Distance Texture would ignore the decimal places of the distance, causing Chebyshev visibility tests to have Edge Clamp Artifacts.
             // ---------------------------------------
             // Radiance and Distance Texture2DArray
             // ---------------------------------------
-            if(mProbeIrradiance != null) { mProbeIrradiance.Release(); mProbeIrradiance = null; }
+            if (mProbeIrradiance != null) { mProbeIrradiance.Release(); mProbeIrradiance = null; }
             var probeIrradianceDimensions = GetDDGIVolumeTextureDimensions(mDDGIVolumeCpu, DDGIVolumeTextureType.Irradiance);
             mProbeIrradiance = new RenderTexture(probeIrradianceDimensions.x, probeIrradianceDimensions.y, 0, GraphicsFormat.R16G16B16A16_SFloat);
             mProbeIrradiance.filterMode = FilterMode.Bilinear;
@@ -457,12 +457,12 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             var camera = renderingData.cameraData.camera;
 
             ResetHistoryInfoIfNeeded(cmd);
-            
-            // 确保该函数在PushGpuConstants之前运行，否则灯光相关常量不会被推送
+
+            // Ensure this function runs before PushGpuConstants, otherwise light-related constants will not be pushed
             UpdateSceneLights(cmd);
 
-            // 注：该函数每调用一次，随机数都会更新，进而导致_RandomVector和_RandomAngle发生改变
-            // 如果不将更新随机数的逻辑抽离出来，那么该函数每帧只允许调用一次！
+            // Note: Each time this function is called, the random numbers are updated, which causes _RandomVector and _RandomAngle to change
+            // If the random number update logic is not separated, this function can only be called once per frame!
             PushGpuConstants(cmd);
 
             int numProbesFlat = mDDGIVolumeCpu.NumProbes.x * mDDGIVolumeCpu.NumProbes.y * mDDGIVolumeCpu.NumProbes.z;
@@ -496,7 +496,7 @@ public sealed class DDGIFeature : ScriptableRendererFeature
                     cmd.SetComputeTextureParam(mUpdateIrradianceCS, mUpdateIrradianceKernel, GpuParams._ProbeIrradianceHistory, mProbeIrradianceHistoryId);
                     cmd.SetComputeTextureParam(mUpdateIrradianceCS, mUpdateIrradianceKernel, GpuParams._ProbeVariability, mProbeVariabilityId);
 
-                    // 注意我们是Y-UP，这里Dispatch需要反转
+                    // Note that we use Y-UP, so the Dispatch needs to be reversed
                     cmd.DispatchCompute(mUpdateIrradianceCS, mUpdateIrradianceKernel, mDDGIVolumeCpu.NumProbes.x, mDDGIVolumeCpu.NumProbes.z, mDDGIVolumeCpu.NumProbes.y);
                 }
             }
@@ -509,11 +509,12 @@ public sealed class DDGIFeature : ScriptableRendererFeature
                     cmd.SetComputeTextureParam(mUpdateDistanceCS, mUpdateDistanceKernel, GpuParams._ProbeDistance, mProbeDistanceId);
                     cmd.SetComputeTextureParam(mUpdateDistanceCS, mUpdateDistanceKernel, GpuParams._ProbeDistanceHistory, mProbeDistanceHistoryId);
 
-                    // 注意我们是Y-UP，这里Dispatch需要反转
+                    // Note that we use Y-UP, so the Dispatch needs to be reversed
                     cmd.DispatchCompute(mUpdateDistanceCS, mUpdateDistanceKernel, mDDGIVolumeCpu.NumProbes.x, mDDGIVolumeCpu.NumProbes.z, mDDGIVolumeCpu.NumProbes.y);
                 }
             }
-            
+
+
             if (mddgiOverride.enableProbeRelocation.value)
             {
                 using (new ProfilingScope(cmd, new ProfilingSampler("DDGI Relocate Probe Pass")))
@@ -578,7 +579,7 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             {
                 using (new ProfilingScope(cmd, new ProfilingSampler("DDGI Variability Pass")))
                 {
-                    // TODO: Y-UP Probe Volume硬编码，如果要修改Volume轴向需要做分支
+                    // TODO: Y-UP Probe Volume hardcoding, if you need to modify the Volume axis, branches will be required
                     var inputTexels = new Vector3Int(mDDGIVolumeCpu.NumProbes.x * PROBE_NUM_IRRADIANCE_INTERIOR_TEXELS,
                         mDDGIVolumeCpu.NumProbes.z * PROBE_NUM_IRRADIANCE_INTERIOR_TEXELS,
                         mDDGIVolumeCpu.NumProbes.y);
@@ -630,7 +631,7 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             }
             else
             {
-                // 如果不开启variability特性，那么我们假定积分过程永远不会收敛
+                // If the variability feature is not enabled, we assume that the integration process will never converge
                 mIsConverged = false;
                 mClearProbeVariability = true;
                 mNumVolumeVariabilitySamples = 0u;
@@ -681,12 +682,12 @@ public sealed class DDGIFeature : ScriptableRendererFeature
         
         private void PushGpuConstants(CommandBuffer cmd)
         {
-            var random = (float)NextDouble(new Random(), 0.0f, 1.0f, 5); // 生成0-1中的随机数，小数保留5位
+            var random = (float)NextDouble(new Random(), 0.0f, 1.0f, 5); // Generate a random number between 0 and 1, with 5 decimal places
             var randomVec = Vector3.Normalize(new Vector3(2.0f * random - 1.0f, 2.0f * random - 1.0f, 2.0f * random - 1.0f));
             var randomAngle = random * Mathf.PI * 2.0f;
-            
+
             // -------------------------------------------------
-            // 填充gpu端常量（灯光相关常量在UpdateSceneLights中更新）
+            // Fill GPU constants (lighting-related constants are updated in UpdateSceneLights)
             // -------------------------------------------------
             Quaternion rotation;
             if (mddgiOverride.useCustomBounds.value && mCustomGIVolume != null) { rotation = mCustomGIVolume.transform.rotation; }
@@ -713,7 +714,7 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             mDDGIVolumeGpu._ProbeMinFrontfaceDistance = mddgiOverride.probeMinFrontfaceDistance.value;
             mDDGIVolumeGpu.DDGI_PROBE_REDUCTION = mddgiOverride.enableProbeVariability.value ? 1 : 0;
             mDDGIVolumeGpu._Pad0 = 0.0f;
-            mDDGIVolumeGpuCB.PushGlobal(cmd, mDDGIVolumeGpu, GpuParams.DDGIVolumeGpu); 
+            mDDGIVolumeGpuCB?.PushGlobal(cmd, mDDGIVolumeGpu, GpuParams.DDGIVolumeGpu); // TODO: How can this be null? Debug!
 
             // -------------------------------------------------
             // Shader Keywords.
@@ -738,7 +739,7 @@ public sealed class DDGIFeature : ScriptableRendererFeature
 
         #region [Light Update]
 
-        // 更新所有灯光，并监测灯光数据变化
+        // Update all lights and monitor changes in light data
         private void UpdateSceneLights(CommandBuffer cmd)
         {
             BuildLightStructuredBuffer(cmd);
@@ -746,7 +747,8 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             mClearProbeVariability = mAnyLightChanged || mSkyChanged;
         }
 
-        // Unity默认会对场景中的额外光做剔除，这会影响我们获取场景全局的光照信息，故只能自己在CPU端手动收集一次
+        // Unity by default culls extra lights in the scene, which affects our ability to collect global lighting information for the scene.
+        // Therefore, we have to manually collect this on the CPU side.
         private void BuildLightStructuredBuffer(CommandBuffer cmd)
         {
             var cpuLights = FindObjectsOfType<Light>();
@@ -755,10 +757,11 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             var gpuPunctualLights = new List<PunctualLight>();
             foreach (var cpuLight in cpuLights)
             {
-                if(cpuLight.lightmapBakeType == LightmapBakeType.Baked) continue;
-                
-                // 暂不支持面光源的动态全局光照...
+                if (cpuLight.lightmapBakeType == LightmapBakeType.Baked) continue;
+
+                // Dynamic global lighting for area lights is not supported yet...
                 if (cpuLight.type == LightType.Point || cpuLight.type == LightType.Spot)
+
                 {
                     var position = cpuLight.transform.position;
                     var color = cpuLight.color * cpuLight.intensity;
@@ -792,12 +795,12 @@ public sealed class DDGIFeature : ScriptableRendererFeature
                     gpuDirectionalLights.Add(directionalLight);
                 }
             }
-            
-            // 如果灯光数组大小为0，就只申请带1个元素的空buffer，创建大小为0的ComputeBuffer会引发错误
-            if(mDirectionalLightBuffer != null) { mDirectionalLightBuffer.Release(); mDirectionalLightBuffer = null; }
+
+            // If the light array size is 0, only allocate a buffer with 1 element. Creating a ComputeBuffer with size 0 will cause an error.
+            if (mDirectionalLightBuffer != null) { mDirectionalLightBuffer.Release(); mDirectionalLightBuffer = null; }
             mDirectionalLightBuffer = new ComputeBuffer(Mathf.Max(gpuDirectionalLights.Count, 1), 2 * 16, ComputeBufferType.Default);
-            
-            if(mPunctualLightBuffer != null) { mPunctualLightBuffer.Release(); mPunctualLightBuffer = null; }
+
+            if (mPunctualLightBuffer != null) { mPunctualLightBuffer.Release(); mPunctualLightBuffer = null; }
             mPunctualLightBuffer = new ComputeBuffer(Mathf.Max(gpuPunctualLights.Count, 1), 4 * 16, ComputeBufferType.Default);
 
             mDirectionalLightBuffer.SetData(gpuDirectionalLights.ToArray());
@@ -807,8 +810,9 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             mDDGIVolumeGpu._PunctualLightCount = gpuPunctualLights.Count;
             /*cmd.SetGlobalInt(GpuParams._DirectionalLightCount, gpuDirectionalLights.Count);
             cmd.SetGlobalInt(GpuParams._PunctualLightCount, gpuPunctualLights.Count);*/
-            
-            
+
+
+
             // -----------------------------
             // Any Light Changed Determine
             // -----------------------------
@@ -872,8 +876,8 @@ public sealed class DDGIFeature : ScriptableRendererFeature
         {
             lightSpotDir = new Vector4(-forward.x, -forward.y, -forward.z, 0.0f);
         }
-        
-        // 更新天空光照，以便给Miss Shader采样使用（Window->Rendering->Lighting）
+
+        // Update the skylight for sampling in the Miss Shader (Window->Rendering->Lighting)
         private void UpdateSkyLight(CommandBuffer cmd)
         {
             // -----------------------------
@@ -904,14 +908,14 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             var skybox = RenderSettings.skybox;
             if (skybox == null)
             {
-                // 如果没有正确设置天空盒材质，则Fallback到纯色 (Ambient Color)，与Unity内行为一致
+                // If the skybox material is not set correctly, fallback to a solid color (Ambient Color), consistent with Unity's behavior
                 UpdateSkyLightAsColor(cmd);
                 return;
             }
 
             if (mCubemapSkyPS == null)
             {
-                Debug.LogWarning("DDGIFeature没有成功找到URP内置的天空盒Shader，请排查");
+                Debug.LogWarning("DDGIFeature failed to find the built-in skybox shader in URP, please check.");
                 UpdateSkyLightAsBlack(cmd);
                 return;
             }
@@ -930,7 +934,7 @@ public sealed class DDGIFeature : ScriptableRendererFeature
             }
             else
             {
-                // 我们目前只支持应用最多的Cubemap式天空盒，其它类型的天空盒不受支持，将Fallback到纯黑
+                // Currently, we only support the most commonly used Cubemap-style skyboxes. Other types of skyboxes are not supported and will fallback to pure black.
                 UpdateSkyLightAsBlack(cmd);
             }
         }
@@ -967,12 +971,12 @@ public sealed class DDGIFeature : ScriptableRendererFeature
         {
             if (request.hasError)
             {
-                Debug.LogError("DDGI: 回读Variability Average时发生错误！");
+                Debug.LogError("DDGI: An error occurred while reading back the Variability Average!");
             }
             else if (request.done)
             {
-                // 我们的Variability Average使用R32G32_SFLOAT格式，因此CPU端读取float刚好能对应32位
-                // 此时readbackPixels的大小应为2，分别对应R和G通道，我们只取R通道即可
+                // Our Variability Average uses the R32G32_SFLOAT format, so reading a float on the CPU corresponds exactly to 32 bits
+                // At this point, the size of readbackPixels should be 2, corresponding to the R and G channels, and we only take the R channel
                 var readbackPixels = request.GetData<float>().ToArray();
                 if (readbackPixels.Length > 0)
                 {
@@ -985,7 +989,7 @@ public sealed class DDGIFeature : ScriptableRendererFeature
                 }
                 else
                 {
-                    Debug.LogError("DDGI: 回读Variability Average完成，但意外地返回了空数据，请排查");
+                    Debug.LogError("DDGI: Variability Average readback completed, but unexpectedly returned empty data, please check.");
                 }
             }
         }
@@ -996,20 +1000,20 @@ public sealed class DDGIFeature : ScriptableRendererFeature
 
             if (mddgiOverride != null && mddgiOverride.useCustomBounds.value)
             {
-                // 目前只支持单个自定义包围盒
+                // Currently, only a single custom bounding box is supported
                 mCustomGIVolume = FindFirstObjectByType<DDGICustomBounds>();
                 var boxCollider = mCustomGIVolume.GetComponent<BoxCollider>();
                 if (boxCollider != null) bounds = boxCollider.bounds;
             }
             else
             {
-                // 根据场景Mesh自动生成包围盒
+                // Automatically generate the bounding box based on the scene's meshes
                 foreach (var meshRenderer in FindObjectsOfType<MeshRenderer>())
                 {
                     bounds.Encapsulate(meshRenderer.bounds);
                 }
-                
-                // 理论上来说我们不会逐帧更新包围盒，因此不必强行包含骨骼网格体，下面这段去掉也是可以的
+
+                // In theory, we won't update the bounding box frame by frame, so it's not necessary to force include skinned meshes. Removing the following part is also fine.
                 foreach (var skinnedMeshRenderer in FindObjectsOfType<SkinnedMeshRenderer>())
                 {
                     bounds.Encapsulate(skinnedMeshRenderer.bounds);
@@ -1021,26 +1025,26 @@ public sealed class DDGIFeature : ScriptableRendererFeature
 
         private static Vector3Int GetDDGIVolumeTextureDimensions(DDGIVolumeCpu volumeDescCpu, DDGIVolumeTextureType type)
         {
-            // TODO: Y-UP Probe Volume硬编码，如果要修改Volume轴向需要做分支
-            // 在unity中我们使用Y-UP的DDGI Volume
-            // 我们的Texture编码原则是：哪一轴朝上，则哪一轴代表arraySize
+            // TODO: Y-UP Probe Volume hardcoded, if you need to modify the Volume axis direction, branching is required
+            // In Unity, we use Y-UP for the DDGI Volume
+            // Our texture encoding principle is: the axis that points up corresponds to the array size
             var width = volumeDescCpu.NumProbes.x;
             var height = volumeDescCpu.NumProbes.z;
             var arraySize = volumeDescCpu.NumProbes.y;
 
-            // 由于ProbeData是One By One的，所以无需额外的分支处理，直接返回上面的代码就可以了
+            // Since ProbeData is one-by-one, there's no need for additional branching, just return the code above directly
             switch (type)
             {
                 case DDGIVolumeTextureType.RayData:
-                {
-                    // 每一行代表一个probe的所有ray info，行数是一个plane上所有probe的个数
-                    height = width * height;
-                    width = volumeDescCpu.NumRays;
-                    break;
-                }
+                    {
+                        // Each row represents all ray info for a single probe; the number of rows is the total number of probes in a plane
+                        height = width * height;
+                        width = volumeDescCpu.NumRays;
+                        break;
+                    }
                 case DDGIVolumeTextureType.Irradiance:
-                {
-                    width *= PROBE_NUM_IRRADIANCE_TEXELS;
+                    {
+                        width *= PROBE_NUM_IRRADIANCE_TEXELS;
                     height *= PROBE_NUM_IRRADIANCE_TEXELS;
                     break;    
                 }
@@ -1187,14 +1191,14 @@ public sealed class DDGIFeature : ScriptableRendererFeature
                 mArgsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
                 mArgsBuffer.SetData(args);
             }
-            
+
             // Draw Spheres.
             {
                 cmd.SetRenderTarget(renderer.cameraColorTargetHandle, renderer.cameraDepthTargetHandle);
-                // cmd.DrawMeshInstanced限制每Pass最多1024个，所以只能用间接绘制
+                // cmd.DrawMeshInstanced has a limit of 1024 instances per pass, so indirect drawing is used instead
                 cmd.DrawMeshInstancedIndirect(mVisualizeMesh, 0, mVisualizeMaterial, 0, mArgsBuffer);
             }
-            
+
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }

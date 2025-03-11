@@ -38,24 +38,24 @@ float Max(float4 v) { return max(Max(v.xyz), v.w);}
 float Pow2(float x) { return x * x; }
 float Pow3(float x) { return x * x * x; }
 
-// 输出旋转后的方向（弧度制）
+// Outputs the rotated direction (in radians)
 // Reference: Unity Shader Graph
 float3 RotateAboutAxisInRadians(float3 In, float3 Axis, float Rotation)
 {
-	float s = sin(Rotation);
-	float c = cos(Rotation);
-	float one_minus_c = 1.0 - c;
+    float s = sin(Rotation);
+    float c = cos(Rotation);
+    float one_minus_c = 1.0 - c;
 
-	Axis = normalize(Axis);
-	float3x3 rot_mat =
-	{   one_minus_c * Axis.x * Axis.x + c, one_minus_c * Axis.x * Axis.y - Axis.z * s, one_minus_c * Axis.z * Axis.x + Axis.y * s,
-		one_minus_c * Axis.x * Axis.y + Axis.z * s, one_minus_c * Axis.y * Axis.y + c, one_minus_c * Axis.y * Axis.z - Axis.x * s,
-		one_minus_c * Axis.z * Axis.x - Axis.y * s, one_minus_c * Axis.y * Axis.z + Axis.x * s, one_minus_c * Axis.z * Axis.z + c
-	};
-	return mul(rot_mat,  In);
+    Axis = normalize(Axis);
+    float3x3 rot_mat =
+    { one_minus_c * Axis.x * Axis.x + c, one_minus_c * Axis.x * Axis.y - Axis.z * s, one_minus_c * Axis.z * Axis.x + Axis.y * s,
+        one_minus_c * Axis.x * Axis.y + Axis.z * s, one_minus_c * Axis.y * Axis.y + c, one_minus_c * Axis.y * Axis.z - Axis.x * s,
+        one_minus_c * Axis.z * Axis.x - Axis.y * s, one_minus_c * Axis.y * Axis.z + Axis.x * s, one_minus_c * Axis.z * Axis.z + c
+    };
+    return mul(rot_mat, In);
 }
 
-// 输出旋转的矩阵（弧度制）
+// Outputs the rotation matrix (in radians)
 float3x3 AngleAxis3x3(float angle, float3 axis)
 {
 	// Rotation with angle (in radians) and axis
@@ -173,7 +173,7 @@ Light GetDDGIPunctualLight(int index, float3 positionWS)
 	half3 lightDirection = half3(lightVector * rsqrt(distanceSqr));
 	float attenuation	 = DistanceAttenuation(distanceSqr, distanceAndSpotAttenuation.xy) * AngleAttenuation(spotDirection.xyz, lightDirection, distanceAndSpotAttenuation.zw);
 
-	// 我们使用光线跟踪确定阴影，这里shadowAttenuation赋1
+    // We use ray tracing to determine shadows, here shadowAttenuation is set to 1.
 	Light light;
 	light.direction				= lightDirection;
 	light.distanceAttenuation	= attenuation;
@@ -235,40 +235,43 @@ Light GetDDGIPunctualLight(int index, float3 positionWS)
 // Probe World Position
 //------------------------------------------------------------------------
 
-// 根据probe的三维网格坐标获取其世界空间位置
+// Get the world position of a probe based on its 3D grid coordinates
 float3 DDGIGetProbeWorldPosition(uint3 gridCoord)
 {
-	//float3 probeWorldPosition = _StartPosition + _ProbeSize * gridCoord; // No Rotation Implementation
-	
-	const float3 probeSpaceWorldPosition = gridCoord * _ProbeSize;
-	const float3 probeVolumeExtents		 = (_ProbeSize * (_ProbeCount - 1)) * 0.5f; // Actually ddgiVolumeCpu - extents
+    // float3 probeWorldPosition = _StartPosition + _ProbeSize * gridCoord; // No Rotation Implementation
 
-	// Rotate Probe
-	float3 probeWorldPosition = probeSpaceWorldPosition - probeVolumeExtents; // 先将[0,n]的坐标转换到[-n/2, n/2]，以便绕中心旋转
-	probeWorldPosition = DDGIQuaternionRotate(probeWorldPosition, _ProbeRotation) + probeVolumeExtents;
-	probeWorldPosition += _StartPosition;
+    const float3 probeSpaceWorldPosition = gridCoord * _ProbeSize;
+    const float3 probeVolumeExtents = (_ProbeSize * (_ProbeCount - 1)) * 0.5f; // Actually ddgiVolumeCpu - extents
 
-	// 光追Shader中会用到该函数，而根据下面的链接，光线跟踪Shader分支仍在计划中，这意味着我们不能用变体，所以用变量判断开启与否
-	// https://portal.productboard.com/unity/1-unity-platform-rendering-visual-effects/tabs/125-shader-system
-	if(DDGI_PROBE_RELOCATION == DDGI_PROBE_RELOCATION_ON)
-	{
-		// 因为我们采样tex2DArray时，采样坐标的z分量实际上对应于gridCoord的y分量，这里需要额外做一步反转
-		int probeIndex				= DDGIGetProbeIndex(gridCoord);
-		uint3 probeDataTexelCoord	= DDGIGetProbeTexelCoordsOneByOne(probeIndex);
-		probeWorldPosition			+= DDGILoadProbeDataOffset(probeDataTexelCoord);
-	}
-	
-	return probeWorldPosition;
+    // Rotate Probe
+    float3 probeWorldPosition = probeSpaceWorldPosition - probeVolumeExtents; // Convert [0,n] coordinates to [-n/2, n/2] for center rotation
+    probeWorldPosition = DDGIQuaternionRotate(probeWorldPosition, _ProbeRotation) + probeVolumeExtents;
+    probeWorldPosition += _StartPosition;
+
+    // Ray tracing shaders will use this function. According to the link below, ray tracing shader branches are still in the plan, 
+    // meaning we cannot use variants, so use a variable to check if it's enabled or not.
+    // https://portal.productboard.com/unity/1-unity-platform-rendering-visual-effects/tabs/125-shader-system
+    if (DDGI_PROBE_RELOCATION == DDGI_PROBE_RELOCATION_ON)
+    {
+        // Since when sampling tex2DArray, the z-component of the sample coordinate actually corresponds to the y-component of gridCoord, 
+        // an extra inversion is needed here.
+        int probeIndex = DDGIGetProbeIndex(gridCoord);
+        uint3 probeDataTexelCoord = DDGIGetProbeTexelCoordsOneByOne(probeIndex);
+        probeWorldPosition += DDGILoadProbeDataOffset(probeDataTexelCoord);
+    }
+
+    return probeWorldPosition;
 }
 
-// 根据probe的一维网格索引获取其世界空间位置
+// Get the world position of a probe based on its 1D grid index
 float3 DDGIGetProbeWorldPosition(uint probeIndex)
 {
-	uint3 gridCoord = DDGIGetProbeCoords(probeIndex);
-	return DDGIGetProbeWorldPosition(gridCoord);
+    uint3 gridCoord = DDGIGetProbeCoords(probeIndex);
+    return DDGIGetProbeWorldPosition(gridCoord);
 }
 
-// 接受一个世界空间位置P，返回与该位置相关的基准probe网格坐标（用于确定P所在的Probe网格块）
+// Given a world space position P, return the base grid coordinates of the probe related to this position 
+// (used to determine the probe grid block that P belongs to)
 uint3 DDGIGetBaseGridCoords(float3 worldPos)
 {
 	const float3 probeVolumeExtents  = (_ProbeSize * (_ProbeCount - 1)) * 0.5f;
@@ -333,14 +336,15 @@ float3 SampleDDGIIrradiance(float3 P, float3 N, float3 Wo)
 
 	biasedPosition += ComputeBias(direction, -Wo);
 
-	// 当着色点位于Volume区域外，我们将提前返回
-	// 当着色点逼近Volume边界（但没有超出volume区域），我们对其辐照度进行平滑过渡
-	volumeWeight = DDGIGetVolumeBlendWeight(biasedPosition);
-	if(volumeWeight <= 0.0f) return 0.0f;
+    // When the shading point is outside the Volume area, we return early.
+    // When the shading point approaches the Volume boundary (but doesn't exceed the volume area), 
+    // we perform a smooth transition for its irradiance.
+    volumeWeight = DDGIGetVolumeBlendWeight(biasedPosition);
+    if (volumeWeight <= 0.0f) return 0.0f;
 
-	// 计算relativeCoordinates时就需要偏移position（参考NVIDIA）
-	// 如果在这里才偏移position（Adria的实现）会导致trilinear插值出现网格瑕疵
-	//position += ComputeBias(direction, -Wo);
+    // When computing relativeCoordinates, the position needs to be offset (reference to NVIDIA).
+    // If the position is offset here (Adria's implementation), it will cause mesh artifacts during trilinear interpolation.
+    // position += ComputeBias(direction, -Wo);
 
 	const uint3  baseProbeCoords	= DDGIGetBaseGridCoords(biasedPosition);
 	const float3 baseProbePosition	= DDGIGetProbeWorldPosition(baseProbeCoords);
@@ -360,8 +364,8 @@ float3 SampleDDGIIrradiance(float3 P, float3 N, float3 Wo)
 		const float3 probePosition	= DDGIGetProbeWorldPosition(probeCoords);
 		const uint probeIndex		= DDGIGetProbeIndex(probeCoords);
 
-		// 如果probe未启用，则不插值
-		const uint3 probeDataCoords = DDGIGetProbeTexelCoordsOneByOne(probeIndex);
+        // If the probe is not enabled, do not interpolate.
+        const uint3 probeDataCoords = DDGIGetProbeTexelCoordsOneByOne(probeIndex);
 		const int   probeState      = DDGILoadProbeState(probeDataCoords);
 		if(probeState == DDGI_PROBE_STATE_INACTIVE) continue;
 
@@ -437,23 +441,23 @@ float3 SampleDDGIIrradiance(float3 P, float3 N, float3 Wo)
 // Legacy (Ignored)
 // ---------------------------------------
 
-/*// 根据probe的三维网格坐标获取其世界空间位置（考虑Relocation）
+/*// Get the world position of a probe based on its 3D grid coordinates (considering Relocation)
 float3 DDGIGetRelocatedProbeWorldPosition(int3 probeCoords)
 {
-	float3 probeWorldPosition = DDGIGetProbeWorldPosition(probeCoords);
+    float3 probeWorldPosition = DDGIGetProbeWorldPosition(probeCoords);
 
-	int probeIndex		= DDGIGetProbeIndex(probeCoords);
-	uint3 coords		= DDGIGetProbeTexelCoordsOneByOne(probeIndex);
-	probeWorldPosition	+= DDGILoadProbeDataOffset(coords);
+    int probeIndex        = DDGIGetProbeIndex(probeCoords);
+    uint3 coords          = DDGIGetProbeTexelCoordsOneByOne(probeIndex);
+    probeWorldPosition   += DDGILoadProbeDataOffset(coords);
 
-	return probeWorldPosition;
+    return probeWorldPosition;
 }
 
-// 根据probe的一维网格索引获取其世界空间位置（考虑Relocation）
+// Get the world position of a probe based on its 1D grid index (considering Relocation)
 float3 DDGIGetRelocatedProbeWorldPosition(int probeIndex)
 {
-	int3 probeCoords = DDGIGetProbeCoords(probeIndex);
-	return DDGIGetRelocatedProbeWorldPosition(probeCoords);
+    int3 probeCoords = DDGIGetProbeCoords(probeIndex);
+    return DDGIGetRelocatedProbeWorldPosition(probeCoords);
 }*/
 
 #endif

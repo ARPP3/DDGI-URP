@@ -99,8 +99,8 @@ CBUFFER_START(DDGIVolumeGpu)
 	int		 DDGI_PROBE_RELOCATION;
 	float	 _ProbeFixedRayBackfaceThreshold;
 	float	 _ProbeMinFrontfaceDistance;
-	int		 _DirectionalLightCount;	 // 存储场景内所有Directional光源（不考虑剔除）
-	int		 _PunctualLightCount;	 // 存储场景内所有Spot和Point光源（不考虑剔除）
+    int     _DirectionalLightCount;  // Stores the count of all Directional lights in the scene (not considering culling)
+    int     _PunctualLightCount;     // Stores the count of all Spot and Point lights in the scene (not considering culling)
 	int		 DDGI_SKYLIGHT_MODE;
 	float4	 _SkyboxTintColor;
 	float4	 _SkyColor;

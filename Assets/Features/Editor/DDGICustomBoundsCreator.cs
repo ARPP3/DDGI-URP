@@ -10,7 +10,7 @@ public class DDGICustomBoundsCreator : Editor
     {
         if (FindObjectsOfType<DDGICustomBounds>().Length > 0)
         {
-            EditorUtility.DisplayDialog("不允许创建重复的DDGI Custom Bounds", "场景中已存在DDGI Custom Bounds", "确认");
+            EditorUtility.DisplayDialog("Duplicate DDGI Custom Bounds Not Allowed", "DDGI Custom Bounds already exists in the scene", "OK");
             return;
         }
         

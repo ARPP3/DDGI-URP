@@ -1,7 +1,6 @@
 #ifndef LIT_RAY_TRACING_INPUT
 #define LIT_RAY_TRACING_INPUT
 
-// 光线负载
 struct RayPayload
 {
     int     remainingDepth;

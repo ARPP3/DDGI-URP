@@ -5,10 +5,10 @@
 
 //------------------------------------------------------------------------
 // Probe Indexing Helpers
-// 独立于Volume存在，只受坐标轴类型影响
+// Independent of Volume, only affected by coordinate axis type
 //------------------------------------------------------------------------
 
-// 获得纵轴上每一个Slice内的Probe数量
+// Get the number of Probes in each Slice along the vertical axis
 int DDGIGetProbesPerPlane(int3 probeCounts)
 {
 #if 1
@@ -47,21 +47,21 @@ int DDGIGetProbeIndexInPlane(int3 probeCoords, int3 probeCounts)
 
 //------------------------------------------------------------------------
 // Probe Index
-// 受当前Volume影响，借助于Helper获得正确的一维索引
+// Affected by the current Volume, using Helper functions to get the correct 1D index
 //------------------------------------------------------------------------
 
 int DDGIGetProbeIndex(int3 probeCoords)
 {
-    int probesPerPlane      = DDGIGetProbesPerPlane(_ProbeCount);
-    int planeIndex          = DDGIGetPlaneIndex(probeCoords);
-    int probeIndexInPlane   = DDGIGetProbeIndexInPlane(probeCoords, _ProbeCount);
+    int probesPerPlane = DDGIGetProbesPerPlane(_ProbeCount);
+    int planeIndex = DDGIGetPlaneIndex(probeCoords);
+    int probeIndexInPlane = DDGIGetProbeIndexInPlane(probeCoords, _ProbeCount);
 
     return (planeIndex * probesPerPlane) + probeIndexInPlane;
 }
 
 //------------------------------------------------------------------------
 // Probe Grid Coordinates
-// 受当前Volume影响，借助于Helper获得正确的三维索引
+// Affected by the current Volume, using Helper functions to get the correct 3D index
 //------------------------------------------------------------------------
 
 int3 DDGIGetProbeCoords(int probeIndex)
@@ -126,8 +126,8 @@ uint3 DDGIGetProbeTexelCoordsOneByOne(int probeIndex)
 
     return uint3(x, y, planeIndex);
 }
-
-// 用于获取当前Probe的左上角的Texel Coord，考虑扩张，返回的结果是Border Texel，需要加上uint3(1,1,0)才能正确索引到实际内容坐标
+// Used to get the top-left Texel Coord of the current Probe, considering expansion. 
+// The returned result is the Border Texel, so you need to add uint3(1,1,0) to correctly index the actual content coordinates.
 uint3 DDGIGetProbeBaseTexelCoords(int probeIndex, int numProbeInteriorTexels)
 {
     uint3 coords = DDGIGetProbeTexelCoordsOneByOne(probeIndex);

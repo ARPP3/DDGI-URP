@@ -2,7 +2,7 @@
 
 #define DDGI_RAYTRACING 1
 
-// Ray Tracing Shader是独立编译的，需要将用得到的hlsl文件都包含进来
+// Ray Tracing Shader is compiled independently, and all the required hlsl files need to be included
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 #include "Lib/Common/RayTracingCommon.hlsl"
 #include "Lib/DDGIInputs.hlsl"
@@ -17,7 +17,7 @@ void DDGI_RayGen()
     uint rayIdx         = DispatchRaysIndex().x;
     uint rayBufferIdx   = probeIdx * _MaxRaysPerProbe + rayIdx;
     
-    // 如果当前probe处于禁用状态，我们只需为其分配32条光线用于逐帧classification判定，而跳过多余的光线
+    // If the current probe is in a disabled state, we only need to allocate 32 rays for frame-by-frame classification and skip the rest
     const uint3 probeDataCoords = DDGIGetProbeTexelCoordsOneByOne(probeIdx);
     const int   probeState      = DDGILoadProbeState(probeDataCoords);
     if(probeState == DDGI_PROBE_STATE_INACTIVE && rayIdx >= RTXGI_DDGI_NUM_FIXED_RAYS) return;
@@ -112,9 +112,9 @@ void DDGI_RayGen()
     }
     
     radiance += primaryPayload.emission;
-    radiance += (min(albedo, float3(0.9f, 0.9f, 0.9f)) * Lambert()) * SampleDDGIIrradiance(P, N, primaryPayload.worldRayDirection); // SampleDDGIIrradiance的结果相当于次生光源
+    radiance += (min(albedo, float3(0.9f, 0.9f, 0.9f)) * Lambert()) * SampleDDGIIrradiance(P, N, primaryPayload.worldRayDirection); // The result of SampleDDGIIrradiance is equivalent to secondary light source
     
-    // 将每一根光线的追踪结果记录在RayBuffer中
+    // Record the tracing result of each ray in RayBuffer
     RayBuffer[rayBufferIdx] = float4(radiance, distance);
 }
 
@@ -125,7 +125,7 @@ void DDGI_Miss(inout DDGIPayload payload)
 
     if(DDGI_SKYLIGHT_MODE == DDGI_SKYLIGHT_MODE_SKYBOX_CUBEMAP)
     {
-        // 这里应该有个HDR Decode过程？
+        // Should there be an HDR Decode process here?
         float4 encodedIrradiance  = float4(SAMPLE_TEXTURECUBE_LOD(_SkyboxCubemap, sampler_SkyboxCubemap, WorldRayDirection(), 0));
         payload.skySample         = encodedIrradiance.rgb * _SkyboxTintColor.rgb * _SkyboxExposure * _SkyboxIntensityMultiplier;
     }

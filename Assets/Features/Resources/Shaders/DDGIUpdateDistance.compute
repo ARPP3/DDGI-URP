@@ -37,30 +37,35 @@ void DDGIUpdateDistance (
     uint3 DispatchThreadId  : SV_DispatchThreadID,
     uint  GroupIndex        : SV_GroupIndex)
 {
-    // 注意这里我们使用的DDGIGetProbeIndex函数接受的输入是Probe的网格坐标，但我们的调度线程组是已经经过反转的，所以需要再次反转回来
-    uint  probeIndex          = DDGIGetProbeIndex(GroupId.xzy);
+    // Note: The DDGIGetProbeIndex function we use here takes the probe's grid coordinates as input,
+    // but our dispatched thread groups have already been reversed, so we need to reverse them back.
+    uint probeIndex = DDGIGetProbeIndex(GroupId.xzy);
     uint3 cornerTexelLocation = DDGIGetProbeBaseTexelCoords(probeIndex, PROBE_DISTANCE_TEXELS);
-    uint3 baseTexelLocation   = cornerTexelLocation + uint3(1, 1, 0);
-    uint3 texelLocation       = baseTexelLocation + uint3(GroupThreadId.xy, 0);
+    uint3 baseTexelLocation = cornerTexelLocation + uint3(1, 1, 0);
+    uint3 texelLocation = baseTexelLocation + uint3(GroupThreadId.xy, 0);
  
-    // 如果probe未启用，则跳过它的更新阶段
-    // 注：Unity默认的ShaderLab不支持在cs的if语句块中使用varying data，这里我们使用dxc进行编译
+    // Skip the update phase if the probe is inactive.
+    // Note: Unity's default ShaderLab does not support using varying data inside if statements in compute shaders.
+    // Here, we use dxc for compilation.
     const uint3 probeDataCoords = DDGIGetProbeTexelCoordsOneByOne(probeIndex);
-    const int   probeState      = DDGILoadProbeState(probeDataCoords);
-    if(probeState == DDGI_PROBE_STATE_INACTIVE) return;
+    const int probeState = DDGILoadProbeState(probeDataCoords);
+    if (probeState == DDGI_PROBE_STATE_INACTIVE)
+        return;
 
     float2 prevDistance = _ProbeDistanceHistory[texelLocation];
 
-    float3 probeDirection = DecodeNormalOctahedron(((GroupThreadId.xy + 0.5f) / (float)PROBE_DISTANCE_TEXELS) * 2 - 1);
+    float3 probeDirection = DecodeNormalOctahedron(((GroupThreadId.xy + 0.5f) / (float) PROBE_DISTANCE_TEXELS) * 2 - 1);
 
-    // NVIDIA SDK的Shared Memory存储每一根光线的数据，但是实践中我们的光线数量允许重新调整
-    // 然而Shared Memory的大小必须是编译期确定的，如果应用程序调整光线预算，那么必须重新编译Shader，这不方便操作
-    // 由于漫反射的低频性质，Probe的Texel数量基本是不改的，因此我们将Shared Memory的大小设置为单个probe的texel总数（通常小于光线数量）
-    // Shared Memory读满后，马上进行卷积评估操作，然后再存下一批光线的数据
-    float   weightSum       = 0;
-    float2  result          = 0;
-    uint    remainingRays   = _RaysPerProbe;
-    uint    offset          = 0;
+    // The NVIDIA SDK stores ray data in Shared Memory, but in practice, our ray count is adjustable.
+    // However, the size of Shared Memory must be determined at compile time.
+    // If the application changes the ray budget, the shader must be recompiled, which is inconvenient.
+    // Due to the low-frequency nature of diffuse reflections, the number of texels per probe remains mostly unchanged.
+    // Therefore, we set the size of Shared Memory to the total number of texels in a single probe (usually smaller than the number of rays).
+    // Once Shared Memory is filled, convolution evaluation is performed immediately, and then the next batch of rays is stored.
+    float weightSum = 0;
+    float2 result = 0;
+    uint remainingRays = _RaysPerProbe;
+    uint offset = 0;
 
     if((DDGI_PROBE_RELOCATION == DDGI_PROBE_RELOCATION_ON) || (DDGI_PROBE_CLASSIFICATION == DDGI_PROBE_CLASSIFICATION_ON))
     {

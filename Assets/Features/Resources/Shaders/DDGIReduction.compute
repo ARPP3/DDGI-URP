@@ -6,20 +6,31 @@
 
 // Reference:   https://www.cnblogs.com/OneStargazer/p/18122953
 //              https://zhuanlan.zhihu.com/p/469436345
-// 目前Unity没有提供查询当前平台Lane Count的API，按HDRP的定义方式，我们在非主机平台上应该回退到64 lane count
-// 对于NVIDIA的显卡来说，lane count是32；而AMD是64，目前尚不清楚HDRP为什么要回退到64
+// Currently, Unity does not provide an API to query the Lane Count of the current platform. 
+// According to HDRP's definition, we should fall back to a 64-lane count on non-console platforms.
+// For NVIDIA GPUs, the lane count is 32, while for AMD GPUs, it is 64. 
+// It is currently unclear why HDRP chooses to fall back to 64.
 
-// **但是**，我们这里需要用lane count来计算有多少组wave（NUM_WAVES），进而确定ThreadGroupSum的大小
-// ThreadGroupSum用于存储每一个wave的规约结果，最后由reduceSharedMemorySum函数将ThreadGroupSum二次求和来确定每个线程组的最终规约结果
-// 如果我们在这里将lane count回退到64，那么在NVIDIA显卡上，ThreadGroupSum的大小会不够用，并且还会导致数组越界，其行为不可控制
-// 具体来说，从variability average的回读结果来看，如果lane count = 64，在NVIDIA显卡上我们会得到NaN值
+// **However**, we need to use the lane count here to calculate the number of waves (NUM_WAVES), 
+// which in turn determines the size of ThreadGroupSum.
+// ThreadGroupSum is used to store the reduction results of each wave, 
+// and finally, the reduceSharedMemorySum function performs a second reduction on ThreadGroupSum 
+// to determine the final reduction result for each thread group.
+// If we fall back to a 64-lane count here, then on NVIDIA GPUs, the size of ThreadGroupSum 
+// will be insufficient, which could lead to out-of-bounds array access and unpredictable behavior.
+// Specifically, based on the readback results of variability average, if lane count = 64, 
+// we will get NaN values on NVIDIA GPUs.
 // ---------------------------------------------------------------------------------------------------
-// 我们这里给到32，如果是AMD的显卡，那么waveIndex只有0和1，相当于ThreadGroupSum有两个空位，这样理论上MaxSumEntry最多就是1
-// 后续也不会访问到ThreadGroupSum的2和3号元素，应该不会有问题；但如果有的显卡（比如Intel）的lane count比32更少，可能还是跑不对
+// Here, we set it to 32. If the GPU is from AMD, then waveIndex will only be 0 and 1, 
+// meaning ThreadGroupSum will have two empty slots. 
+// In theory, MaxSumEntry will be at most 1, and subsequent accesses to elements 2 and 3 
+// of ThreadGroupSum should not occur, so it should be fine.
+// However, if some GPUs (such as Intel) have a lane count lower than 32, 
+// it may still not work correctly.
 #ifdef PLATFORM_LANE_COUNT                                  // Reference HDRP: We can infer the size of a wave. This is currently not possible on non-consoles, so we have to fallback to a sensible default in those cases.
     #define RTXGI_DDGI_WAVE_LANE_COUNT  PLATFORM_LANE_COUNT
 #else
-    #define RTXGI_DDGI_WAVE_LANE_COUNT  32                  // HDRP在这里回退到64，然而根据上述推断，我们只能给到32
+    #define RTXGI_DDGI_WAVE_LANE_COUNT  32                  // HDRP falls back to 64 here, but based on the above reasoning, we can only set it to 32.
 #endif
 
 #define NUM_THREADS_X 4
@@ -31,7 +42,7 @@
 #pragma kernel DDGIReductionCS
 #pragma kernel DDGIExtraReductionCS
 
-// 添加这一行是为了让Wave操作函数（如WaveActiveSum）能够通过编译
+// Adding this line allows Wave operations (such as WaveActiveSum) to compile successfully.
 #pragma use_dxc
 
 RWTexture2DArray<float>  _ProbeVariability; 
@@ -72,7 +83,8 @@ void reduceSharedMemorySum(uint ThreadIndexInGroup, uint waveIndex, uint waveLan
 //  X - (probeCount.x * interiorIrradianceTexels) / (NUM_THREAD_X * ThreadSampleFootprint.x)
 //  Y - (probeCount.y * interiorIrradianceTexels) / (NUM_THREAD_Y * ThreadSampleFootprint.y)
 //  Z - (probeCount.z * interiorIrradianceTexels) / NUM_THREAD_Z
-// 即“在X方向上有NUM_THREAD_X个线程，每个线程有ThreadSampleFootprint.x个采样足迹的设置下，需要在X方向上分配多少个线程组，才能将irradiance texture的X轴规约完毕”
+// That is, "Given that there are NUM_THREAD_X threads in the X direction, and each thread processes ThreadSampleFootprint.x sample footprints, 
+// how many thread groups need to be allocated in the X direction to complete the reduction of the irradiance texture along the X-axis."
 [numthreads(NUM_THREADS_X, NUM_THREADS_Y, NUM_THREADS_Z)]
 void DDGIReductionCS(uint3 GroupID : SV_GroupID, uint3 GroupThreadID : SV_GroupThreadID, uint ThreadIndexInGroup : SV_GroupIndex)
 {

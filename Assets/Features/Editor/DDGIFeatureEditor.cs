@@ -13,7 +13,7 @@ public class DDGIFeatureEditor : Editor
     {
         if (!SystemInfo.supportsRayTracing)
         {
-            EditorGUILayout.HelpBox("DDGI依赖硬件光线跟踪，只在DX12、Playstation 5以及Xbox Series X上受支持", MessageType.Warning);
+            EditorGUILayout.HelpBox("DDGI relies on hardware ray tracing and is only supported on DX12, Playstation 5, and Xbox Series X", MessageType.Warning);
             return;
         }
     }
