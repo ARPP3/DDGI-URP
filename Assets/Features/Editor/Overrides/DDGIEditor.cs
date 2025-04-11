@@ -6,173 +6,157 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-[CustomEditor(typeof(DDGI))]
-public sealed class DDGIEditor : VolumeComponentEditor
-{
-    private SerializedDataParameter mEnableDDGI;
-    private SerializedDataParameter mIndirectIntensity;
-    private SerializedDataParameter mNormalBiasMultiplier;
-    private SerializedDataParameter mViewBiasMultiplier;
-    private SerializedDataParameter mProbeRotationDegrees;
-    private SerializedDataParameter mDebugProbe;
-    private SerializedDataParameter mProbeDebugMode;
-    private SerializedDataParameter mProbeRadius;
-    private SerializedDataParameter mDebugIndirect;
-    private SerializedDataParameter mIndirectDebugMode;
-    private SerializedDataParameter mEnableProbeRelocation;
-    private SerializedDataParameter mProbeMinFrontfaceDistance;
-    private SerializedDataParameter mEnableProbeClassification;
-    private SerializedDataParameter mProbeFixedRayBackfaceThreshold;
-    private SerializedDataParameter mEnableProbeVariability;
-    private SerializedDataParameter mProbeVariabilityThreshold;
-    private SerializedDataParameter mUseCustomBounds;
-    private SerializedDataParameter mProbeCountX;
-    private SerializedDataParameter mProbeCountY;
-    private SerializedDataParameter mProbeCountZ;
-    private SerializedDataParameter mRaysPerProbe;
-
-    public override void OnEnable()
+namespace DDGI.Editor
+{ 
+    [CustomEditor(typeof(DDGI))]
+    public sealed class DDGIEditor : VolumeComponentEditor
     {
-        var o = new PropertyFetcher<DDGI>(serializedObject);
+        private SerializedDataParameter _enableDDGI;
+        private SerializedDataParameter _indirectIntensity;
+        private SerializedDataParameter _normalBiasMultiplier;
+        private SerializedDataParameter _viewBiasMultiplier;
+        private SerializedDataParameter _probeRotationDegrees;
+        private SerializedDataParameter _debugProbe;
+        private SerializedDataParameter _probeDebugMode;
+        private SerializedDataParameter _probeRadius;
+        private SerializedDataParameter _debugIndirect;
+        private SerializedDataParameter _indirectDebugMode;
+        private SerializedDataParameter _enableProbeRelocation;
+        private SerializedDataParameter _probeMinFrontfaceDistance;
+        private SerializedDataParameter _enableProbeClassification;
+        private SerializedDataParameter _probeFixedRayBackfaceThreshold;
+        private SerializedDataParameter _enableProbeVariability;
+        private SerializedDataParameter _probeVariabilityThreshold;
+        private SerializedDataParameter _useCustomBounds;
+        private SerializedDataParameter _probeCountX;
+        private SerializedDataParameter _probeCountY;
+        private SerializedDataParameter _probeCountZ;
+        private SerializedDataParameter _raysPerProbe;
 
-        mEnableDDGI = Unpack(o.Find(x => x.enableDDGI));
-        mIndirectIntensity = Unpack(o.Find(x => x.indirectIntensity));
-        mNormalBiasMultiplier = Unpack(o.Find(x => x.normalBiasMultiplier));
-        mViewBiasMultiplier = Unpack(o.Find(x => x.viewBiasMultiplier));
-        mProbeRotationDegrees = Unpack(o.Find(x => x.probeRotationDegrees));
-        mDebugProbe = Unpack(o.Find(x => x.debugProbe));
-        mProbeDebugMode = Unpack(o.Find(x => x.probeDebugMode));
-        mProbeRadius = Unpack(o.Find(x => x.probeRadius));
-        mDebugIndirect = Unpack(o.Find(x => x.debugIndirect));
-        mIndirectDebugMode = Unpack(o.Find(x => x.indirectDebugMode));
-        mEnableProbeRelocation = Unpack(o.Find(x => x.enableProbeRelocation));
-        mProbeMinFrontfaceDistance = Unpack(o.Find(x => x.probeMinFrontfaceDistance));
-        mEnableProbeClassification = Unpack(o.Find(x => x.enableProbeClassification));
-        mProbeFixedRayBackfaceThreshold = Unpack(o.Find(x => x.probeFixedRayBackfaceThreshold));
-        mEnableProbeVariability = Unpack(o.Find(x => x.enableProbeVariability));
-        mProbeVariabilityThreshold = Unpack(o.Find(x => x.probeVariabilityThreshold));
-        mUseCustomBounds = Unpack(o.Find(x => x.useCustomBounds));
-        mProbeCountX = Unpack(o.Find(x => x.probeCountX));
-        mProbeCountY = Unpack(o.Find(x => x.probeCountY));
-        mProbeCountZ = Unpack(o.Find(x => x.probeCountZ));
-        mRaysPerProbe = Unpack(o.Find(x => x.raysPerProbe));
-    }
-
-    public override void OnInspectorGUI()
-    {
-        if (!SystemInfo.supportsRayTracing)
+        public override void OnEnable()
         {
-            EditorGUILayout.HelpBox("DDGI relies on hardware ray tracing and is only supported on DX12, Playstation 5, and Xbox Series X.", MessageType.Warning);
-            return;
+            var o = new PropertyFetcher<DDGI>(serializedObject);
+
+            _enableDDGI = Unpack(o.Find(x => x.enableDDGI));
+            _indirectIntensity = Unpack(o.Find(x => x.indirectIntensity));
+            _normalBiasMultiplier = Unpack(o.Find(x => x.normalBiasMultiplier));
+            _viewBiasMultiplier = Unpack(o.Find(x => x.viewBiasMultiplier));
+            _probeRotationDegrees = Unpack(o.Find(x => x.probeRotationDegrees));
+            _debugProbe = Unpack(o.Find(x => x.debugProbe));
+            _probeDebugMode = Unpack(o.Find(x => x.probeDebugMode));
+            _probeRadius = Unpack(o.Find(x => x.probeRadius));
+            _debugIndirect = Unpack(o.Find(x => x.debugIndirect));
+            _indirectDebugMode = Unpack(o.Find(x => x.indirectDebugMode));
+            _enableProbeRelocation = Unpack(o.Find(x => x.enableProbeRelocation));
+            _probeMinFrontfaceDistance = Unpack(o.Find(x => x.probeMinFrontfaceDistance));
+            _enableProbeClassification = Unpack(o.Find(x => x.enableProbeClassification));
+            _probeFixedRayBackfaceThreshold = Unpack(o.Find(x => x.probeFixedRayBackfaceThreshold));
+            _enableProbeVariability = Unpack(o.Find(x => x.enableProbeVariability));
+            _probeVariabilityThreshold = Unpack(o.Find(x => x.probeVariabilityThreshold));
+            _useCustomBounds = Unpack(o.Find(x => x.useCustomBounds));
+            _probeCountX = Unpack(o.Find(x => x.probeCountX));
+            _probeCountY = Unpack(o.Find(x => x.probeCountY));
+            _probeCountZ = Unpack(o.Find(x => x.probeCountZ));
+            _raysPerProbe = Unpack(o.Find(x => x.raysPerProbe));
         }
-        
-        PropertyField(mEnableDDGI);
 
-    #region Dynamic Lighting Settings
-
-        PropertyField(mIndirectIntensity);
-        PropertyField(mNormalBiasMultiplier);
-        PropertyField(mViewBiasMultiplier);
-        PropertyField(mProbeRotationDegrees);
-        EditorGUILayout.Space(5.0f);
-
-    #endregion
-
-    
-    #region Probe Feature Settings
-
-        PropertyField(mEnableProbeRelocation);
-        if (mEnableProbeRelocation.value.boolValue)
+        public override void OnInspectorGUI()
         {
-            PropertyField(mProbeMinFrontfaceDistance);
-        }
-        EditorGUILayout.Space(3.0f);
-        
-        PropertyField(mEnableProbeClassification);
-        EditorGUILayout.Space(3.0f);
-        
-        if (mEnableProbeRelocation.value.boolValue || mEnableProbeClassification.value.boolValue)
-        {
-            PropertyField(mProbeFixedRayBackfaceThreshold);
-            EditorGUILayout.Space(3.0f);
-        }
-        
-        PropertyField(mEnableProbeVariability);
-        if (mEnableProbeVariability.value.boolValue)
-        {
-            PropertyField(mProbeVariabilityThreshold);
-            EditorGUILayout.HelpBox("Probe Variability is currently an experimental feature and does not support emissive objects. Please consider using it with caution.", MessageType.Info);
-        }
-        EditorGUILayout.Space(5.0f);
-
-    #endregion
-
-    
-    #region Debug Options
-
-        PropertyField(mDebugProbe);
-        if (mDebugProbe.value.boolValue)
-        {
-            EditorGUI.indentLevel++;
-            PropertyField(mProbeDebugMode);
-            PropertyField(mProbeRadius);
-            EditorGUI.indentLevel--;
-        }
-        PropertyField(mDebugIndirect);
-        if (mDebugIndirect.value.boolValue)
-        {
-            EditorGUI.indentLevel++;
-            PropertyField(mIndirectDebugMode);
-            EditorGUI.indentLevel--;
-        }
-        EditorGUILayout.Space(5.0f);
-
-    #endregion
-
-
-    #region Reinitialize Settings
-    
-        PropertyField(mUseCustomBounds);
-        if (mUseCustomBounds.value.boolValue)
-        {
-            var customBounds = FindFirstObjectByType<DDGICustomBounds>();
-            if (customBounds == null)
+            if (!SystemInfo.supportsRayTracing)
             {
-                EditorGUILayout.HelpBox("No valid DDGI Custom Bounds detected in the current scene. You may have never created it or have it disabled; " +
-                                        "To create it, you can right-click in the Hierarchy -> Light -> DDGI Custom Bounds",
-                    MessageType.Warning);
+                EditorGUILayout.HelpBox("DDGI relies on hardware ray tracing and is only supported on DX12, Playstation 5, and Xbox Series X.", MessageType.Warning);
+                return;
             }
-        }
-            
-        PropertyField(mProbeCountX);
-        PropertyField(mProbeCountY);
-        PropertyField(mProbeCountZ);
-        PropertyField(mRaysPerProbe);
+        
+            PropertyField(_enableDDGI);
+
+        #region Dynamic Lighting Settings
+
+            PropertyField(_indirectIntensity);
+            PropertyField(_normalBiasMultiplier);
+            PropertyField(_viewBiasMultiplier);
+            PropertyField(_probeRotationDegrees);
+            EditorGUILayout.Space(5.0f);
+
+        #endregion
+
     
-    #endregion
+        #region Probe Feature Settings
+
+            PropertyField(_enableProbeRelocation);
+            if (_enableProbeRelocation.value.boolValue)
+            {
+                PropertyField(_probeMinFrontfaceDistance);
+            }
+            EditorGUILayout.Space(3.0f);
+        
+            PropertyField(_enableProbeClassification);
+            EditorGUILayout.Space(3.0f);
+        
+            if (_enableProbeRelocation.value.boolValue || _enableProbeClassification.value.boolValue)
+            {
+                PropertyField(_probeFixedRayBackfaceThreshold);
+                EditorGUILayout.Space(3.0f);
+            }
+        
+            PropertyField(_enableProbeVariability);
+            if (_enableProbeVariability.value.boolValue)
+            {
+                PropertyField(_probeVariabilityThreshold);
+                EditorGUILayout.HelpBox("Probe Variability is currently an experimental feature and does not support emissive objects. Please consider using it with caution.", MessageType.Info);
+            }
+            EditorGUILayout.Space(5.0f);
+
+        #endregion
+
+    
+        #region Debug Options
+
+            PropertyField(_debugProbe);
+            if (_debugProbe.value.boolValue)
+            {
+                EditorGUI.indentLevel++;
+                PropertyField(_probeDebugMode);
+                PropertyField(_probeRadius);
+                EditorGUI.indentLevel--;
+            }
+            PropertyField(_debugIndirect);
+            if (_debugIndirect.value.boolValue)
+            {
+                EditorGUI.indentLevel++;
+                PropertyField(_indirectDebugMode);
+                EditorGUI.indentLevel--;
+            }
+            EditorGUILayout.Space(5.0f);
+
+        #endregion
+
+
+        #region Reinitialize Settings
+    
+            PropertyField(_useCustomBounds);
+            if (_useCustomBounds.value.boolValue)
+            {
+                var customBounds = FindFirstObjectByType<DDGICustomBounds>();
+                if (customBounds == null)
+                {
+                    EditorGUILayout.HelpBox("No valid DDGI Custom Bounds detected in the current scene. You may have never created it or have it disabled; " +
+                                            "To create it, you can right-click in the Hierarchy -> Light -> DDGI Custom Bounds",
+                        MessageType.Warning);
+                }
+            }
+            
+            PropertyField(_probeCountX);
+            PropertyField(_probeCountY);
+            PropertyField(_probeCountZ);
+            PropertyField(_raysPerProbe);
+    
+        #endregion
         
     
-        if (GUILayout.Button("Refresh DDGI Settings"))
-        {
-            var urpAsset = GraphicsSettings.renderPipelineAsset;
-            
-            if (urpAsset != null && urpAsset is UniversalRenderPipelineAsset)
+            if (GUILayout.Button("Refresh DDGI Settings"))
             {
-                Type urpAssetType = urpAsset.GetType();
-                FieldInfo scriptableRendererDataListField = urpAssetType.GetField("m_RendererDataList", BindingFlags.Instance | BindingFlags.NonPublic);
-                    
-                if (scriptableRendererDataListField != null)
-                {
-                    ScriptableRendererData[] rendererDataList = scriptableRendererDataListField.GetValue(urpAsset) as ScriptableRendererData[];
-
-                    if (rendererDataList == null) return;
-                        
-                    foreach (var rendererData in rendererDataList)
-                    {
-                        var ddgiFeature = (DDGIFeature)rendererData.rendererFeatures.Find(x => x.GetType() == typeof(DDGIFeature));
-                        if(ddgiFeature != null) ddgiFeature.Reinitialize();
-                    }
-                }
+                DDGI.RefreshDDGISettings();
             }
         }
     }

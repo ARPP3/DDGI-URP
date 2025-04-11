@@ -1,21 +1,22 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-public class DDGICustomBoundsCreator : Editor
+namespace DDGI.Editor
 {
-    [MenuItem("GameObject/Light/DDGI Custom Bounds")]
-    public static void CreateDDGICustomBounds()
+    public class DDGICustomBoundsCreator : UnityEditor.Editor
     {
-        if (FindObjectsOfType<DDGICustomBounds>().Length > 0)
+        [MenuItem("GameObject/Light/DDGI Custom Bounds")]
+        public static void CreateDDGICustomBounds()
         {
-            EditorUtility.DisplayDialog("Duplicate DDGI Custom Bounds Not Allowed", "DDGI Custom Bounds already exists in the scene", "OK");
-            return;
-        }
+            if (FindObjectsByType<DDGICustomBounds>(FindObjectsInactive.Exclude, FindObjectsSortMode.None).Length > 0)
+            {
+                EditorUtility.DisplayDialog("Duplicate DDGI Custom Bounds Not Allowed", "DDGI Custom Bounds already exists in the scene", "OK");
+                return;
+            }
         
-        var ddgiBounds = new GameObject("DDGI Custom Bounds");
-        ddgiBounds.AddComponent<BoxCollider>();
-        ddgiBounds.AddComponent<DDGICustomBounds>();
+            var ddgiBounds = new GameObject("DDGI Custom Bounds");
+            ddgiBounds.AddComponent<BoxCollider>();
+            ddgiBounds.AddComponent<DDGICustomBounds>();
+        }
     }
 }

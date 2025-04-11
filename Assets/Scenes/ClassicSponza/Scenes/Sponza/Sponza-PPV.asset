@@ -205,6 +205,82 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   components:
   - {fileID: -3055112653458443235}
-  - {fileID: -874688259678110959}
   - {fileID: -6139513381459318461}
   - {fileID: -840262880208484689}
+  - {fileID: 2044217583536755425}
+--- !u!114 &2044217583536755425
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0c7eea921f355348890bcad602074da, type: 3}
+  m_Name: DDGI
+  m_EditorClassIdentifier: 
+  active: 1
+  enableDDGI:
+    m_OverrideState: 1
+    m_Value: 1
+  indirectIntensity:
+    m_OverrideState: 1
+    m_Value: 1
+  normalBiasMultiplier:
+    m_OverrideState: 1
+    m_Value: 0.2
+  viewBiasMultiplier:
+    m_OverrideState: 1
+    m_Value: 0.8
+  probeRotationDegrees:
+    m_OverrideState: 1
+    m_Value: {x: 0, y: 0, z: 0}
+  enableProbeRelocation:
+    m_OverrideState: 1
+    m_Value: 1
+  probeMinFrontfaceDistance:
+    m_OverrideState: 1
+    m_Value: 0.3
+  enableProbeClassification:
+    m_OverrideState: 1
+    m_Value: 1
+  probeFixedRayBackfaceThreshold:
+    m_OverrideState: 1
+    m_Value: 0.25
+  enableProbeVariability:
+    m_OverrideState: 1
+    m_Value: 0
+  probeVariabilityThreshold:
+    m_OverrideState: 0
+    m_Value: 0.025
+  debugProbe:
+    m_OverrideState: 1
+    m_Value: 0
+  probeDebugMode:
+    m_OverrideState: 1
+    m_Value: 0
+  probeRadius:
+    m_OverrideState: 1
+    m_Value: 8.51
+  debugIndirect:
+    m_OverrideState: 1
+    m_Value: 0
+  indirectDebugMode:
+    m_OverrideState: 0
+    m_Value: 0
+  useCustomBounds:
+    m_OverrideState: 0
+    m_Value: 0
+  probeCountX:
+    m_OverrideState: 0
+    m_Value: 22
+  probeCountY:
+    m_OverrideState: 0
+    m_Value: 22
+  probeCountZ:
+    m_OverrideState: 0
+    m_Value: 22
+  raysPerProbe:
+    m_OverrideState: 1
+    m_Value: 144
