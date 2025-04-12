@@ -21,7 +21,7 @@ MonoBehaviour:
     m_Value: 0.75
   intensity:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0.24
   scatter:
     m_OverrideState: 1
     m_Value: 0.7
@@ -62,7 +62,7 @@ MonoBehaviour:
   active: 1
   mode:
     m_OverrideState: 1
-    m_Value: 2
+    m_Value: 1
   neutralHDRRangeReductionMode:
     m_OverrideState: 0
     m_Value: 2
@@ -204,10 +204,10 @@ MonoBehaviour:
   m_Name: Sponza-PPV
   m_EditorClassIdentifier: 
   components:
-  - {fileID: -3055112653458443235}
   - {fileID: -6139513381459318461}
   - {fileID: -840262880208484689}
   - {fileID: 2044217583536755425}
+  - {fileID: -3055112653458443235}
 --- !u!114 &2044217583536755425
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -223,10 +223,10 @@ MonoBehaviour:
   active: 1
   enableDDGI:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0
   indirectIntensity:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 2.33
   normalBiasMultiplier:
     m_OverrideState: 1
     m_Value: 0.2
@@ -252,8 +252,8 @@ MonoBehaviour:
     m_OverrideState: 1
     m_Value: 0
   probeVariabilityThreshold:
-    m_OverrideState: 0
-    m_Value: 0.025
+    m_OverrideState: 1
+    m_Value: 0.1
   debugProbe:
     m_OverrideState: 1
     m_Value: 0
@@ -282,5 +282,5 @@ MonoBehaviour:
     m_OverrideState: 0
     m_Value: 22
   raysPerProbe:
-    m_OverrideState: 1
-    m_Value: 144
+    m_OverrideState: 0
+    m_Value: 140

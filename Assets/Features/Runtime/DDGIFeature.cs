@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.LightTransport;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
@@ -325,6 +326,7 @@ namespace DDGI
                     (RayTracingAccelerationStructure.ManagementMode.Automatic, RayTracingAccelerationStructure.RayTracingModeMask.Everything, 255);
                 _accelerationStructure = new RayTracingAccelerationStructure(setting);
 
+                ReleaseBufferSafe(_ddgiVolumeGpuCB);
                 _ddgiVolumeGpuCB = new ConstantBuffer<DDGIVolumeGpu>();
 
                 // Shader.Find is not reliable, as shaders may be missing after packaging, making Find ineffective
@@ -336,11 +338,8 @@ namespace DDGI
             {
                 void ReleaseIfNotNull(ref RenderTexture texture)
                 {
-                    if (texture != null)
-                    {
-                        texture.Release();
-                        texture = null;
-                    }
+                    texture?.Release();
+                    texture = null;
                 }
 
                 if (_isInitialized || _ddgiOverride == null) return;
@@ -360,7 +359,7 @@ namespace DDGI
                 // ---------------------------------------
                 // Initialize Ray Data Buffer
                 // ---------------------------------------
-                if (_rayBuffer != null) { _rayBuffer.Release(); _rayBuffer = null; }
+                ReleaseBufferSafe(_rayBuffer);
                 int numProbesFlat = _ddgiVolumeCpu.numProbes.x * _ddgiVolumeCpu.numProbes.y * _ddgiVolumeCpu.numProbes.z;
                 _rayBuffer = new ComputeBuffer(numProbesFlat * _ddgiVolumeCpu.maxNumRays, 16 /* float4 */, ComputeBufferType.Default);
 
@@ -515,6 +514,9 @@ namespace DDGI
 
                 internal BufferHandle directionalBufferHandle;
                 internal BufferHandle punctualBufferHandle;
+
+                internal TextureHandle mainLightShadowmap;
+                internal TextureHandle additionalLightsShadowmap;
             }
 
             public static RenderTargetInfo GetRenderTargetInfo(Texture texture)
@@ -547,42 +549,59 @@ namespace DDGI
                 Initialize(renderGraph);
                 if (!_isInitialized || _accelerationStructure == null) return;
 
+                // Probably checking just one of these is fine but we can check all
+                if (_probeData == null || _probeIrradiance == null || _probeDistance == null || 
+                    _probeVariability == null || _probeVariabilityAverage == null) return;
+
                 UpdateSceneLights();
 
-                var skyboxTexHandle                 = renderGraph.ImportTexture(_skyboxTexHandle, GetRenderTargetInfo(_skyboxTex));
-                var probeDataHandle                 = renderGraph.ImportTexture(_probeDataHandle, GetRenderTargetInfo(_probeData));
-                var probeDistanceHandle             = renderGraph.ImportTexture(_probeDistanceHandle, GetRenderTargetInfo(_probeDistance));
-                var probeIrradianceHandle           = renderGraph.ImportTexture(_probeIrradianceHandle, GetRenderTargetInfo(_probeIrradiance));
-                var probeVariabilityHandle          = renderGraph.ImportTexture(_probeVariabilityHandle, GetRenderTargetInfo(_probeVariability));
-                var probeDistanceHistoryHandle      = renderGraph.ImportTexture(_probeDistanceHistoryHandle, GetRenderTargetInfo(_probeDistanceHistory));
-                var probeIrradianceHistoryHandle    = renderGraph.ImportTexture(_probeIrradianceHistoryHandle, GetRenderTargetInfo(_probeIrradianceHistory));
-                var probeVariabilityAverageHandle   = renderGraph.ImportTexture(_probeVariabilityAverageHandle, GetRenderTargetInfo(_probeVariabilityAverage));
-
-                var punctualBufferHandle            = renderGraph.ImportBuffer(_punctualLightBuffer);
-                var directionalBufferHandle         = renderGraph.ImportBuffer(_directionalLightBuffer);
-
-                using (var builder = renderGraph.AddUnsafePass<DDGIPassData>("DDGI Pass", out var passData))
+                try
                 {
-                    UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
-                    UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
+                    var skyboxTexHandle = renderGraph.ImportTexture(_skyboxTexHandle, GetRenderTargetInfo(_skyboxTex));
 
-                    passData.camera = cameraData.camera;
+                    var probeDataHandle = renderGraph.ImportTexture(_probeDataHandle, GetRenderTargetInfo(_probeData));
+                    var probeDistanceHandle = renderGraph.ImportTexture(_probeDistanceHandle, GetRenderTargetInfo(_probeDistance));
+                    var probeIrradianceHandle = renderGraph.ImportTexture(_probeIrradianceHandle, GetRenderTargetInfo(_probeIrradiance));
+                    var probeVariabilityHandle = renderGraph.ImportTexture(_probeVariabilityHandle, GetRenderTargetInfo(_probeVariability));
+                    var probeDistanceHistoryHandle = renderGraph.ImportTexture(_probeDistanceHistoryHandle, GetRenderTargetInfo(_probeDistanceHistory));
+                    var probeIrradianceHistoryHandle = renderGraph.ImportTexture(_probeIrradianceHistoryHandle, GetRenderTargetInfo(_probeIrradianceHistory));
+                    var probeVariabilityAverageHandle = renderGraph.ImportTexture(_probeVariabilityAverageHandle, GetRenderTargetInfo(_probeVariabilityAverage));
 
-                    builder.EnableAsyncCompute(false);
+                    var punctualBufferHandle = renderGraph.ImportBuffer(_punctualLightBuffer);
+                    var directionalBufferHandle = renderGraph.ImportBuffer(_directionalLightBuffer);
 
-                    builder.UseTexture(passData.skyboxTex = skyboxTexHandle);
-                    builder.UseTexture(passData.probeDataHandle = probeDataHandle, AccessFlags.ReadWrite);
-                    builder.UseTexture(passData.probeDistanceHandle = probeDistanceHandle, AccessFlags.ReadWrite);
-                    builder.UseTexture(passData.probeIrradianceHandle = probeIrradianceHandle, AccessFlags.ReadWrite);
-                    builder.UseTexture(passData.probeVariabilityHandle = probeVariabilityHandle, AccessFlags.ReadWrite);
-                    builder.UseTexture(passData.probeDistanceHistoryHandle = probeDistanceHistoryHandle, AccessFlags.ReadWrite);
-                    builder.UseTexture(passData.probeIrradianceHistoryHandle = probeIrradianceHistoryHandle, AccessFlags.ReadWrite);
-                    builder.UseTexture(passData.probeVariabilityAverageHandle = probeVariabilityAverageHandle, AccessFlags.ReadWrite);
+                    using (var builder = renderGraph.AddUnsafePass<DDGIPassData>("DDGI Pass", out var passData))
+                    {
+                        UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
+                        UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
 
-                    builder.UseBuffer(passData.punctualBufferHandle = punctualBufferHandle, AccessFlags.ReadWrite);
-                    builder.UseBuffer(passData.directionalBufferHandle = directionalBufferHandle, AccessFlags.ReadWrite);
+                        passData.camera = cameraData.camera;
 
-                    builder.SetRenderFunc((DDGIPassData data, UnsafeGraphContext context) => ExecuteUnsafePass(data, context));
+                        builder.EnableAsyncCompute(false);
+                        builder.AllowPassCulling(false);
+
+                        builder.UseTexture(passData.skyboxTex = skyboxTexHandle);
+                        builder.UseTexture(passData.mainLightShadowmap = resourceData.mainShadowsTexture);
+                        builder.UseTexture(passData.additionalLightsShadowmap = resourceData.additionalShadowsTexture);
+
+                        builder.UseTexture(passData.probeDataHandle = probeDataHandle, AccessFlags.ReadWrite);
+                        builder.UseTexture(passData.probeDistanceHandle = probeDistanceHandle, AccessFlags.ReadWrite);
+                        builder.UseTexture(passData.probeIrradianceHandle = probeIrradianceHandle, AccessFlags.ReadWrite);
+                        builder.UseTexture(passData.probeVariabilityHandle = probeVariabilityHandle, AccessFlags.ReadWrite);
+                        builder.UseTexture(passData.probeDistanceHistoryHandle = probeDistanceHistoryHandle, AccessFlags.ReadWrite);
+                        builder.UseTexture(passData.probeIrradianceHistoryHandle = probeIrradianceHistoryHandle, AccessFlags.ReadWrite);
+                        builder.UseTexture(passData.probeVariabilityAverageHandle = probeVariabilityAverageHandle, AccessFlags.ReadWrite);
+
+                        builder.UseBuffer(passData.punctualBufferHandle = punctualBufferHandle, AccessFlags.ReadWrite);
+                        builder.UseBuffer(passData.directionalBufferHandle = directionalBufferHandle, AccessFlags.ReadWrite);
+
+                        builder.SetRenderFunc((DDGIPassData data, UnsafeGraphContext context) => ExecuteUnsafePass(data, context));
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"DDGI: Failed to import textures or buffers: {e.Message}");
+                    return;
                 }
             }
 
@@ -783,13 +802,15 @@ namespace DDGI
 
             public void Release()
             {
-                if (_accelerationStructure != null) { _accelerationStructure.Release(); _accelerationStructure = null; }
-                if (_ddgiVolumeGpuCB != null) { _ddgiVolumeGpuCB.Release(); _ddgiVolumeGpuCB = null; }
+                _accelerationStructure?.Release();
+                _accelerationStructure = null;
+
+                ReleaseBufferSafe(_ddgiVolumeGpuCB);
 
                 ReleaseBufferSafe(_punctualLightBuffer);
                 ReleaseBufferSafe(_directionalLightBuffer);
 
-                _rayBuffer?.Release();
+                ReleaseBufferSafe(_rayBuffer);
 
                 _probeData?.Release();
                 _probeDistance?.Release();
@@ -840,14 +861,17 @@ namespace DDGI
                 // -------------------------------------------------
                 // Fill GPU constants (lighting-related constants are updated in UpdateSceneLights)
                 // -------------------------------------------------
-                Quaternion rotation;
-                if (_ddgiOverride.useCustomBounds.value && _customGIVolume != null) { rotation = _customGIVolume.transform.rotation; }
-                else { rotation = Quaternion.Euler(_ddgiOverride.probeRotationDegrees.value); }
+                Quaternion rotation = 
+                    (_ddgiOverride.useCustomBounds.value && _customGIVolume != null) ?
+                    _customGIVolume.transform.rotation :
+                    Quaternion.Euler(_ddgiOverride.probeRotationDegrees.value);
+
+                var a = 2.0f * _ddgiVolumeCpu.extents;
+                var b = new Vector3(_ddgiVolumeCpu.numProbes.x, _ddgiVolumeCpu.numProbes.y, _ddgiVolumeCpu.numProbes.z) - Vector3.one;
+
                 _ddgiVolumeGpu.probeRotation = new Vector4(rotation.x, rotation.y, rotation.z, rotation.w);
                 _ddgiVolumeGpu.startPosition = _ddgiVolumeCpu.origin - _ddgiVolumeCpu.extents;
                 _ddgiVolumeGpu.raysPerProbe = _ddgiVolumeCpu.numRays;
-                var a = 2.0f * _ddgiVolumeCpu.extents;
-                var b = new Vector3(_ddgiVolumeCpu.numProbes.x, _ddgiVolumeCpu.numProbes.y, _ddgiVolumeCpu.numProbes.z) - Vector3.one;
                 _ddgiVolumeGpu.probeSize = new Vector3(a.x / b.x, a.y / b.y, a.z / b.z);
                 _ddgiVolumeGpu.maxRaysPerProbe = _ddgiVolumeCpu.maxNumRays;
                 _ddgiVolumeGpu.probeCount = new Vector3Int(_ddgiVolumeCpu.numProbes.x, _ddgiVolumeCpu.numProbes.y, _ddgiVolumeCpu.numProbes.z);
@@ -866,7 +890,7 @@ namespace DDGI
                 _ddgiVolumeGpu.ddgiProbeReduction = _ddgiOverride.enableProbeVariability.value ? 1 : 0;
                 _ddgiVolumeGpu.padding0 = 0.0f;
 
-                _ddgiVolumeGpuCB.PushGlobal(CommandBufferHelpers.GetNativeCommandBuffer(cmd), _ddgiVolumeGpu, GpuParams.DDGIVolumeGpu); 
+                _ddgiVolumeGpuCB.PushGlobal(CommandBufferHelpers.GetNativeCommandBuffer(cmd), _ddgiVolumeGpu, GpuParams.DDGIVolumeGpu);
 
                 // -------------------------------------------------
                 // Shader Keywords.
@@ -910,10 +934,10 @@ namespace DDGI
                 foreach (var cpuLight in cpuLights)
                 {
                     if (cpuLight.lightmapBakeType == LightmapBakeType.Baked) continue;
+                    if (cpuLight.enabled == false) continue;
 
                     // Dynamic global lighting for area lights is not supported yet...
                     if (cpuLight.type == LightType.Point || cpuLight.type == LightType.Spot)
-
                     {
                         var position = cpuLight.transform.position;
                         var color = cpuLight.color * cpuLight.intensity;
@@ -930,7 +954,7 @@ namespace DDGI
                     
                         PunctualLight punctualLight;
                         punctualLight.position = new Vector4(position.x, position.y, position.z, 1.0f);
-                        punctualLight.color = color;
+                        punctualLight.color = color * cpuLight.intensity;
                         punctualLight.distanceAndSpotAttenuation = lightAttenuation;
                         punctualLight.spotDirection = lightSpotDir;
                     
@@ -942,7 +966,7 @@ namespace DDGI
                     
                         DirectionalLight directionalLight;
                         directionalLight.direction = new Vector4(-lightForward.x, -lightForward.y, -lightForward.z, 0.0f);
-                        directionalLight.color = cpuLight.color;
+                        directionalLight.color = cpuLight.color * cpuLight.intensity;
                     
                         gpuDirectionalLights.Add(directionalLight);
                     }
@@ -950,9 +974,9 @@ namespace DDGI
 
                 // If the light array size is 0, only allocate a buffer with 1 element. Creating a ComputeBuffer with size 0 will cause an error.
                 ReleaseBufferSafe(_directionalLightBuffer);
-                _directionalLightBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, Mathf.Max(gpuDirectionalLights.Count, 1), 2 * 16);
-
                 ReleaseBufferSafe(_punctualLightBuffer);
+
+                _directionalLightBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, Mathf.Max(gpuDirectionalLights.Count, 1), 2 * 16);
                 _punctualLightBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, Mathf.Max(gpuPunctualLights.Count, 1), 4 * 16);
 
                 _directionalLightBuffer.SetData(gpuDirectionalLights.ToArray());
@@ -1333,8 +1357,8 @@ namespace DDGI
                     args[1] = (uint)numProbesFlat;
                     args[2] = (uint)_visualizeMesh.GetIndexStart(0);
                     args[3] = (uint)_visualizeMesh.GetBaseVertex(0);
-                
-                    if(_argsBuffer != null) { _argsBuffer.Release(); _argsBuffer = null; }
+
+                    ReleaseBufferSafe(_argsBuffer);
                     _argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
                     _argsBuffer.SetData(args);
                 }
@@ -1349,14 +1373,26 @@ namespace DDGI
             public void Release()
             {
                 CoreUtils.Destroy(_visualizeMaterial);
-
-                if (_argsBuffer != null) { _argsBuffer.Release(); _argsBuffer = null; }
+                ReleaseBufferSafe(_argsBuffer);
             }
+        }
+
+        public static void ReleaseBufferSafe<T>(ConstantBuffer<T> buffer)
+            where T : struct
+        {
+            buffer?.Release();
+        }
+
+        public static void ReleaseBufferSafe(ComputeBuffer buffer)
+        {
+            buffer?.Dispose();
+            buffer?.Release();
         }
 
         public static void ReleaseBufferSafe(GraphicsBuffer buffer)
         {
-            if (buffer != null) { if (buffer.IsValid()) { buffer.Release(); } buffer = null; }
+            buffer?.Dispose();
+            buffer?.Release();
         }
 
         public static RTHandle ConvertRenderTargetIdentifierToRTHandle(RenderTargetIdentifier rtId)
@@ -1408,8 +1444,8 @@ namespace DDGI
         {
             base.Dispose(disposing);
 
-            _ddgiPass?.Release(); 
-            _ddgiVisualizePass?.Release();
+            // _ddgiPass?.Release(); 
+            // _ddgiVisualizePass?.Release();
 
         #if UNITY_EDITOR
             EditorSceneManager.sceneOpened -= OnSceneOpened;
